@@ -1,4 +1,5 @@
 import { analyzeChat } from './analysis.js';
+import { effectivePreset } from './budget.js';
 import { defaultSettings } from './defaults.js';
 import { buildPrompt, PROMPT_PREFIX } from './prompt.js';
 import { activePreset, loadSettings, SETTINGS_KEY } from './settings.js';
@@ -67,15 +68,16 @@ export function createController(getContext, onView = () => {}) {
     function refresh() {
         const context = getContext();
         const preset = activePreset(settings);
-        const optionsKey = JSON.stringify(preset.options.dynamics);
+        const effective = effectivePreset(preset, settings.consumptionLevel);
+        const optionsKey = JSON.stringify(effective.options.dynamics);
         if (analysisOptions !== optionsKey || evaluatedRevision !== revision) {
-            analysis = analyzeChat(context.chat ?? [], getKnownNames(context), preset.options.dynamics);
+            analysis = analyzeChat(context.chat ?? [], getKnownNames(context), effective.options.dynamics);
             analysisOptions = optionsKey;
             evaluatedRevision = revision;
         }
-        const prompt = buildPrompt(preset, analysis, settings.enabled);
+        const prompt = buildPrompt(effective, analysis, settings.enabled);
         if (generationActive) applyInjections(prompt.blocks);
-        view = { settings, preset, analysis, prompt, startupError };
+        view = { settings, preset, effective, analysis, prompt, startupError };
         onView(view);
     }
 

@@ -25,6 +25,13 @@
 #rp-anti-slop .rp-top,
 #rp-anti-slop .rp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
 #rp-anti-slop .rp-top { margin-bottom: .6rem; }
+#rp-anti-slop .rp-budget { margin-bottom: .8rem; padding: .65rem; background: var(--rp-wash); border: 1px solid var(--rp-line); border-radius: 6px; }
+#rp-anti-slop .rp-budget-label { display: grid; gap: .35rem; }
+#rp-anti-slop .rp-budget-slider { width: 100%; margin: 0; }
+#rp-anti-slop .rp-budget-level { margin-inline-start: .4rem; font-variant-numeric: tabular-nums; }
+#rp-anti-slop .rp-budget-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .4rem; }
+#rp-anti-slop .rp-estimate { font-variant-numeric: tabular-nums; }
+#rp-anti-slop .rp-budget-help { margin: .25rem 0 0; }
 #rp-anti-slop .rp-actions:not(:first-child) { margin-top: .45rem; }
 #rp-anti-slop .rp-presets,
 #rp-anti-slop .rp-grid {
@@ -38,6 +45,7 @@
 #rp-anti-slop .rp-field { display: flex; flex-direction: column; align-items: stretch; gap: .2rem; min-width: 0; }
 #rp-anti-slop .rp-check { display: inline-flex; flex-direction: row; align-items: center; gap: .42rem; cursor: pointer; }
 #rp-anti-slop .rp-check input { flex: 0 0 auto; margin: 0; }
+#rp-anti-slop .rp-check:has(input:disabled) { color: var(--rp-muted); cursor: default; }
 #rp-anti-slop .rp-field .text_pole { margin: 0; width: 100%; box-sizing: border-box; }
 #rp-anti-slop textarea { resize: vertical; min-height: 3.1rem; }
 
@@ -58,6 +66,9 @@
 #rp-anti-slop .rp-editor { grid-column: 1 / -1; min-width: 0; }
 #rp-anti-slop .rp-editor > summary { margin-left: 1.25rem; color: var(--rp-muted); font-size: .88em; }
 #rp-anti-slop .rp-editor-body { display: grid; gap: .45rem; margin: .35rem 0 .15rem; padding: .5rem; background: var(--rp-wash); border-radius: 6px; }
+#rp-anti-slop .rp-style-list { display: grid; gap: .5rem; justify-items: start; }
+#rp-anti-slop .rp-style-example { display: grid; gap: .4rem; margin: 0; min-width: 0; width: 100%; box-sizing: border-box; padding: .45rem; border: 1px solid var(--rp-line); border-radius: 5px; }
+#rp-anti-slop .rp-style-example legend { padding: 0 .25rem; overflow-wrap: anywhere; max-width: 95%; }
 #rp-anti-slop .rp-button {
     min-width: 1.85rem;
     min-height: 1.75rem;

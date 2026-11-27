@@ -5,6 +5,7 @@ export const POSITIONS = { before: '故事提示词前', after: '故事提示词
 export const MAX_CONFIG_SIZE = 4 * 1024 * 1024;
 export const MAX_PRESETS = 16;
 export const MAX_MODULES = 64;
+export const MAX_EXAMPLES = 32;
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const string = (value, fallback, max) => typeof value === 'string' ? value.slice(0, max).toWellFormed() : fallback;
 const boolean = (value, fallback) => typeof value === 'boolean' ? value : fallback;
@@ -34,6 +35,8 @@ export function normalizeOptions(input = {}) {
         position: Object.hasOwn(POSITIONS, options.position) ? options.position : original.position,
         depth: number(options.depth, original.depth, 0, 100),
         maxChars: number(options.maxChars, original.maxChars, 160, 16000),
+        budgetExcluded: Array.isArray(options.budgetExcluded) ? [...new Set(options.budgetExcluded.filter(id =>
+            validId(id) || id === '@tail' || id === '@words' || id === '@patterns'))].slice(0, MAX_MODULES + 3) : [],
         tailEnabled: boolean(options.tailEnabled, original.tailEnabled),
         tailText: string(options.tailText, original.tailText, 4000),
         dynamics: {
@@ -55,6 +58,28 @@ function validId(value) {
     return typeof value === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/u.test(value);
 }
 
+function normalizeExamples(module) {
+    if (Array.isArray(module.examples)) {
+        const ids = new Set();
+        if (module.examples.length > MAX_EXAMPLES) throw new Error(`每个模块最多 ${MAX_EXAMPLES} 条文风示例。`);
+        return module.examples.map(example => {
+            if (!isObject(example) || !validId(example.id) || ids.has(example.id) || typeof example.name !== 'string' || typeof example.text !== 'string') {
+                throw new Error('配置含有无效或重复的文风示例。');
+            }
+            ids.add(example.id);
+            return {
+                id: example.id, name: string(example.name, '', 80).trim() || '未命名示例',
+                kind: example.kind === 'negative' ? 'negative' : 'positive',
+                enabled: boolean(example.enabled, true), text: string(example.text, '', 8000),
+            };
+        });
+    }
+    return [ ['positive', '原文风正例'], ['negative', '原文风反例'] ].flatMap(([kind, name]) => {
+        const text = string(module[kind], '', 8000);
+        return text.trim() ? [{ id: `style-${kind}`, name, kind, enabled: true, text }] : [];
+    });
+}
+
 function normalizeModule(item, ids) {
     if (!isObject(item) || !validId(item.id) || ids.has(item.id) || typeof item.name !== 'string' || typeof item.text !== 'string') {
         throw new Error('配置含有无效或重复的模块。');
@@ -66,16 +91,15 @@ function normalizeModule(item, ids) {
         text: string(item.text, '', 8000),
         enabled: boolean(item.enabled, true),
         position: Object.hasOwn(POSITIONS, item.position) ? item.position : 'inherit',
-        ...(item.id === 'examples' || Object.hasOwn(item, 'positive') || Object.hasOwn(item, 'negative') ? {
-            positive: string(item.positive, '', 8000), negative: string(item.negative, '', 8000),
-        } : {}),
+        ...(item.id === 'examples' || Object.hasOwn(item, 'examples') || Object.hasOwn(item, 'positive') || Object.hasOwn(item, 'negative')
+            ? { examples: normalizeExamples(item) } : {}),
     };
 }
 
 export function validateSettings(input) {
-    if (!isObject(input) || input.version !== 1 || typeof input.enabled !== 'boolean' ||
+    if (!isObject(input) || ![1, 2].includes(input.version) || typeof input.enabled !== 'boolean' ||
         !Array.isArray(input.presets) || input.presets.length < 1 || input.presets.length > MAX_PRESETS) {
-        throw new Error('请选择本扩展导出的第 1 版配置。');
+        throw new Error('请选择本扩展导出的第 1 版或第 2 版配置。');
     }
     const ids = new Set();
     const presets = input.presets.map(preset => {
@@ -92,7 +116,8 @@ export function validateSettings(input) {
         };
     });
     if (!ids.has(input.activePresetId)) throw new Error('当前预设在文件中不存在。');
-    return { version: 1, enabled: input.enabled, activePresetId: input.activePresetId, presets };
+    const consumptionLevel = input.version === 2 ? number(input.consumptionLevel, null, 1, 99) : null;
+    return { version: 2, enabled: input.enabled, activePresetId: input.activePresetId, consumptionLevel, presets };
 }
 
 export function loadSettings(input) {

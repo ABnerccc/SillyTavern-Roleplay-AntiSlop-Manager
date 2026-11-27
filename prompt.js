@@ -1,14 +1,9 @@
+import { estimateInputTokens } from './budget.js';
+
 // SillyTavern 1.19.1 public/script.js membership and role enum values.
 export const PROMPT_PREFIX = 'roleplay-anti-slop-manager:';
 const POSITIONS = { before: 2, after: 0, chat: 1 };
 const SYSTEM_ROLE = 0;
-
-function moduleContent(module) {
-    const parts = [module.text.trim()];
-    if (module.positive?.trim()) parts.push(`【文风正例】\n${module.positive.trim()}`);
-    if (module.negative?.trim()) parts.push(`【文风反例，仅用于识别并减少这类表达】\n${module.negative.trim()}`);
-    return parts.filter(Boolean).join('\n\n');
-}
 
 function dynamicContent(analysis, limit, maxItems) {
     const lines = [];
@@ -34,7 +29,7 @@ function dynamicContent(analysis, limit, maxItems) {
 
 export function buildPrompt(preset, analysis, enabled) {
     const { options, modules } = preset;
-    const result = { blocks: [], length: 0, omitted: [], words: [], patterns: [] };
+    const result = { blocks: [], length: 0, estimatedTokens: 0, omitted: [], words: [], patterns: [] };
     if (!enabled) return result;
     const groups = new Map();
     const seen = new Set();
@@ -57,10 +52,22 @@ export function buildPrompt(preset, analysis, enabled) {
     const tail = options.tailEnabled ? options.tailText.trim() : '';
     if (tail) add('末端强化', tail, 'chat', 0);
     for (const module of modules) {
-        if (module.enabled) add(module.name, moduleContent(module), module.position === 'inherit' ? options.position : module.position, options.depth);
+        if (!module.enabled) continue;
+        const position = module.position === 'inherit' ? options.position : module.position;
+        add(module.name, module.text.trim(), position, options.depth);
+        for (const example of module.examples ?? []) {
+            if (!example.enabled || !example.text.trim()) continue;
+            const kind = example.kind === 'negative' ? '文风反例，仅用于识别并减少这类表达' : '文风正例';
+            const name = example.name.replace(/\s+/gu, ' ').trim();
+            add(`${module.name} · ${name}`, `【${kind} · ${name}】\n${example.text.trim()}`, position, options.depth);
+        }
     }
     const needsSeparator = groups.has(keyFor('chat', 0)) ? 2 : 0;
-    const dynamic = dynamicContent(analysis, Math.min(options.dynamics.maxChars, options.maxChars - result.length - needsSeparator), options.dynamics.maxItems);
+    const eligible = {
+        lexicon: options.dynamics.words ? analysis.lexicon : [],
+        patterns: options.dynamics.patterns ? analysis.patterns : [],
+    };
+    const dynamic = dynamicContent(eligible, Math.min(options.dynamics.maxChars, options.maxChars - result.length - needsSeparator), options.dynamics.maxItems);
     add('动态提醒', dynamic.text, 'chat', 0);
     result.words = dynamic.words;
     result.patterns = dynamic.patterns;
@@ -72,5 +79,6 @@ export function buildPrompt(preset, analysis, enabled) {
             text: parts.join('\n\n'),
         };
     }).sort((a, b) => Object.keys(POSITIONS).indexOf(a.position) - Object.keys(POSITIONS).indexOf(b.position) || b.depth - a.depth);
+    result.estimatedTokens = estimateInputTokens(result.blocks);
     return result;
 }

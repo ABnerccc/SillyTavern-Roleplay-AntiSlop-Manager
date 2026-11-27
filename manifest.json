@@ -5,7 +5,7 @@
   "optional": [],
   "js": "index.js",
   "css": "style.css",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minimum_client_version": "1.19.1",
   "hooks": { "disable": "onDisable" },
   "author": "ABnerccc",

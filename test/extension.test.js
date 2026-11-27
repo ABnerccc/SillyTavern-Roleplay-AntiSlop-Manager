@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeChat } from '../analysis.js';
+import { effectivePreset, estimateInputTokens, featureState, TECHNICAL } from '../budget.js';
 import { defaultSettings } from '../defaults.js';
 import { createController } from '../host.js';
 import { buildPrompt, PROMPT_PREFIX } from '../prompt.js';
@@ -23,22 +24,26 @@ test('内置预设含按原排名排列的 22 个独立模块和正反例', () =
     ]);
     assert.deepEqual(preset.modules.map(module => module.enabled), [...Array(16).fill(true), ...Array(6).fill(false)]);
     assert.ok(preset.modules.every(module => module.text.trim()));
-    assert.ok(preset.modules[1].positive && preset.modules[1].negative);
+    assert.deepEqual(preset.modules[1].examples.map(example => example.kind), ['positive', 'negative']);
     preset.modules[0].text = '自定义';
     assert.notEqual(settings.presets[1].modules[0].text, '自定义');
+    preset.modules[1].examples[0].text = '独立示例';
+    assert.notEqual(settings.presets[1].modules[1].examples[0].text, '独立示例');
 });
 
 test('JSON 往返保留设置、预设顺序、示例和注入位置，并拒绝错误结构', () => {
     const settings = defaultSettings();
     settings.enabled = false;
     settings.activePresetId = 'light';
+    settings.consumptionLevel = 43;
     const preset = activePreset(settings);
     preset.modules.reverse();
     preset.modules[0].position = 'before';
     preset.options.dynamics.blacklist = ['特殊用词'];
+    preset.options.budgetExcluded = [TECHNICAL.words, 'autonomy'];
     assert.deepEqual(parseSettings('\uFEFF' + JSON.stringify(settings)), settings);
     assert.throws(() => parseSettings('{'), /JSON/);
-    assert.throws(() => validateSettings({ ...settings, version: 2 }), /第 1 版/);
+    assert.throws(() => validateSettings({ ...settings, version: 3 }), /第 1 版或第 2 版/);
     assert.throws(() => validateSettings({ ...settings, activePresetId: 'gone' }), /不存在/);
     settings.presets[0].modules.push(settings.presets[0].modules[0]);
     assert.throws(() => validateSettings(settings), /重复的模块/);
@@ -126,10 +131,86 @@ test('总体和动态字符上限会保留完整提示，不截断正反例或�
         patterns: [{ id: 'long', advice: '长句提醒'.repeat(30) }] }, true);
     assert.equal(prompt.length, prompt.blocks.reduce((sum, block) => sum + block.text.length, 0));
     assert.ok(prompt.length <= 160);
-    assert.ok(prompt.omitted.includes('高质量文风示例'));
+    assert.ok(prompt.omitted.includes('高质量文风示例 · 动作和对白'));
     assert.deepEqual(prompt.patterns, []);
     assert.ok(prompt.words.length <= 1);
     assert.ok(prompt.blocks.some(block => block.text.endsWith(preset.options.tailText)));
+});
+
+test('旧版自定义正反例升级为独立条目，原提示词、开关和手动预设得以保留', () => {
+    const old = defaultSettings();
+    old.version = 1;
+    delete old.consumptionLevel;
+    const examples = activePreset(old).modules[1];
+    delete examples.examples;
+    Object.assign(examples, { positive: '旧正例内容', negative: '旧反例内容', enabled: false });
+    const migrated = parseSettings(JSON.stringify(old));
+    const module = activePreset(migrated).modules[1];
+    assert.equal(migrated.version, 2);
+    assert.equal(migrated.consumptionLevel, null);
+    assert.equal(module.enabled, false);
+    assert.equal(module.text, examples.text);
+    assert.deepEqual(module.examples.map(({ kind, enabled, text }) => [kind, enabled, text]), [
+        ['positive', true, '旧正例内容'], ['negative', true, '旧反例内容'],
+    ]);
+    module.examples.length = 0;
+    assert.deepEqual(activePreset(parseSettings(JSON.stringify(migrated))).modules[1].examples, []);
+});
+
+test('自动档位逐步开放 22 项及末端强化和动态功能，恢复手动档保留各预设开关', () => {
+    const preset = activePreset(defaultSettings());
+    const named = effective => effective.modules.filter(module => module.enabled).map(module => module.id).sort();
+    assert.deepEqual(named(effectivePreset(preset, 1)), ['autonomy']);
+    assert.equal(effectivePreset(preset, 1).options.tailEnabled, false);
+    assert.equal(effectivePreset(preset, 6).options.tailEnabled, true);
+    assert.equal(effectivePreset(preset, 42).options.dynamics.words, false);
+    assert.equal(effectivePreset(preset, 43).options.dynamics.words, true);
+    assert.equal(effectivePreset(preset, 62).options.dynamics.patterns, false);
+    assert.equal(effectivePreset(preset, 63).options.dynamics.patterns, true);
+    assert.equal(named(effectivePreset(preset, 65)).length, 16);
+    assert.equal(named(effectivePreset(preset, 99)).length, 22);
+    preset.modules.reverse();
+    assert.deepEqual(named(effectivePreset(preset, 1)), ['autonomy']);
+    assert.equal(effectivePreset(preset, null), preset);
+    const choice = featureState('physical', false, 98, []);
+    assert.equal(choice.available, false);
+    assert.equal(featureState('physical', false, 99, []).enabled, true);
+    assert.equal(featureState('physical', true, 99, ['physical']).enabled, false);
+    assert.equal(preset.modules.find(module => module.id === 'physical').enabled, false);
+});
+
+test('用实际注入内容估算额外输入 Token，默认档位逐步增加且全局关闭为零', () => {
+    const preset = activePreset(defaultSettings());
+    let prior = 0;
+    for (let level = 1; level <= 99; level++) {
+        const draft = buildPrompt(effectivePreset(preset, level), empty, true);
+        assert.equal(draft.estimatedTokens, estimateInputTokens(draft.blocks));
+        assert.ok(draft.estimatedTokens >= prior);
+        prior = draft.estimatedTokens;
+    }
+    assert.ok(prior > buildPrompt(effectivePreset(preset, 1), empty, true).estimatedTokens);
+    assert.equal(buildPrompt(effectivePreset(preset, 99), empty, false).estimatedTokens, 0);
+});
+
+test('文风示例按名称和开关注入，单条超长或删除不影响其他条目', () => {
+    const preset = activePreset(defaultSettings());
+    const module = preset.modules[1];
+    preset.modules = [module];
+    preset.options.tailEnabled = false;
+    preset.options.maxChars = 160;
+    module.examples = [
+        { id: 'a', name: '关闭的示例', kind: 'positive', enabled: false, text: '不应该出现的测试文本' },
+        { id: 'b', name: '超长示例', kind: 'positive', enabled: true, text: '超长文本'.repeat(80) },
+        { id: 'c', name: '简短对话', kind: 'positive', enabled: true, text: '「吃吗？」他问。' },
+        { id: 'd', name: '反例', kind: 'negative', enabled: true, text: '如雷鸣般炸响。' },
+    ];
+    const first = buildPrompt(preset, empty, true);
+    assert.match(first.blocks[0].text, /文风正例 · 简短对话.*吃吗/su);
+    assert.match(first.blocks[0].text, /文风反例.*炸响/su);
+    assert.doesNotMatch(first.blocks[0].text, /不应该出现|超长文本/u);
+    assert.ok(first.omitted.includes('高质量文风示例 · 超长示例'));
+    module.examples = module.examples.filter(example => example.id !== 'c');
+    assert.doesNotMatch(buildPrompt(preset, empty, true).blocks[0].text, /吃吗/u);
 });
 
 function mockHost() {

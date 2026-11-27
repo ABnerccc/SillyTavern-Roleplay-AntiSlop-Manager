@@ -25,14 +25,16 @@ const moduleDefinitions = [
 
 export const BUILTIN_MODULES = moduleDefinitions.map(([id, name, text], index) => ({
     id, name, text, enabled: index < 16, position: 'inherit',
-    ...(id === 'examples' ? {
-        positive: '「后门。」她把钥匙推过来，又往回拨了半寸。「回来别拧死，我还要出去。」\n\n雨顺着外套滴到地砖上。陈叔把拖把递给他：「你站那儿就行。顺便把脚底蹭两下。」',
-        negative: '她嘴角勾起一抹意味深长的弧度，仿佛命运的齿轮在这一刻悄然转动。\n\n他沉默了。很久。久到空气仿佛凝固，整个世界都在等待一个答案。',
-    } : {}),
+    ...(id === 'examples' ? { examples: [
+        { id: 'style-positive', name: '动作和对白', kind: 'positive', enabled: true,
+            text: '「后门。」她把钥匙推过来，又往回拨了半寸。「回来别拧死，我还要出去。」\n\n雨顺着外套滴到地砖上。陈叔把拖把递给他：「你站那儿就行。顺便把脚底蹭两下。」' },
+        { id: 'style-negative', name: '套话和过度渲染', kind: 'negative', enabled: true,
+            text: '她嘴角勾起一抹意味深长的弧度，仿佛命运的齿轮在这一刻悄然转动。\n\n他沉默了。很久。久到空气仿佛凝固，整个世界都在等待一个答案。' },
+    ] } : {}),
 }));
 
 export const DEFAULT_OPTIONS = {
-    position: 'after', depth: 2, maxChars: 5000,
+    position: 'after', depth: 2, maxChars: 5000, budgetExcluded: [],
     tailEnabled: true,
     tailText: '接续当前场景，用人物当下会说的话、会做的事写下一步。保留玩家角色的决定权。',
     dynamics: {
@@ -45,11 +47,11 @@ export function defaultSettings() {
     const makePreset = (id, name, enabled) => ({
         id, name, options: structuredClone(DEFAULT_OPTIONS),
         modules: BUILTIN_MODULES.map((module, index) => ({
-            ...module, enabled: enabled(index),
+            ...structuredClone(module), enabled: enabled(index),
         })),
     });
     return {
-        version: 1, enabled: true, activePresetId: 'balanced',
+        version: 2, enabled: true, activePresetId: 'balanced', consumptionLevel: null,
         presets: [
             makePreset('balanced', '均衡', index => index < 16),
             makePreset('light', '轻量', index => [0, 1, 2, 3, 4, 7, 12, 14].includes(index)),
