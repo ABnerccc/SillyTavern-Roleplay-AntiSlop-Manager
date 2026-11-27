@@ -1,0 +1,102 @@
+#rp-anti-slop {
+    --rp-line: color-mix(in srgb, currentColor 21%, transparent);
+    --rp-wash: color-mix(in srgb, currentColor 5%, transparent);
+    --rp-muted: color-mix(in srgb, currentColor 77%, transparent);
+    border: 1px solid var(--rp-line);
+    border-radius: 9px;
+    margin-block: .55rem;
+    min-width: 0;
+}
+
+#rp-anti-slop summary { cursor: pointer; }
+#rp-anti-slop > summary { padding: .75rem; font-weight: 650; }
+#rp-anti-slop .rp-content { padding: 0 .75rem .75rem; }
+#rp-anti-slop .rp-summary,
+#rp-anti-slop .rp-module-count,
+#rp-anti-slop .rp-sample-size,
+#rp-anti-slop .rp-preview-size {
+    margin-inline-start: .45rem;
+    color: var(--rp-muted);
+    font-size: .87em;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+}
+
+#rp-anti-slop .rp-top,
+#rp-anti-slop .rp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
+#rp-anti-slop .rp-top { margin-bottom: .6rem; }
+#rp-anti-slop .rp-actions:not(:first-child) { margin-top: .45rem; }
+#rp-anti-slop .rp-presets,
+#rp-anti-slop .rp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
+    align-items: start;
+    gap: .4rem .75rem;
+}
+
+#rp-anti-slop .rp-preset-actions { grid-column: 1 / -1; margin-top: 0; }
+#rp-anti-slop .rp-field { display: flex; flex-direction: column; align-items: stretch; gap: .2rem; min-width: 0; }
+#rp-anti-slop .rp-check { display: inline-flex; flex-direction: row; align-items: center; gap: .42rem; cursor: pointer; }
+#rp-anti-slop .rp-check input { flex: 0 0 auto; margin: 0; }
+#rp-anti-slop .rp-field .text_pole { margin: 0; width: 100%; box-sizing: border-box; }
+#rp-anti-slop textarea { resize: vertical; min-height: 3.1rem; }
+
+#rp-anti-slop .rp-section { margin-top: .65rem; border: 1px solid var(--rp-line); border-radius: 6px; }
+#rp-anti-slop .rp-section > summary { background: var(--rp-wash); padding: .6rem; font-weight: 650; }
+#rp-anti-slop .rp-section-body { padding: .6rem; }
+#rp-anti-slop .rp-section-body > .rp-field { margin-top: .45rem; }
+#rp-anti-slop .rp-module {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: .28rem .3rem;
+    padding: .32rem 0;
+    border-bottom: 1px solid var(--rp-line);
+}
+
+#rp-anti-slop .rp-module-title span { overflow-wrap: anywhere; }
+#rp-anti-slop .rp-editor { grid-column: 1 / -1; min-width: 0; }
+#rp-anti-slop .rp-editor > summary { margin-left: 1.25rem; color: var(--rp-muted); font-size: .88em; }
+#rp-anti-slop .rp-editor-body { display: grid; gap: .45rem; margin: .35rem 0 .15rem; padding: .5rem; background: var(--rp-wash); border-radius: 6px; }
+#rp-anti-slop .rp-button {
+    min-width: 1.85rem;
+    min-height: 1.75rem;
+    padding: .15rem .55rem;
+    border: 1px solid var(--rp-line);
+    border-radius: 5px;
+    background: var(--rp-wash);
+    color: inherit;
+    font: inherit;
+    font-size: .89em;
+    cursor: pointer;
+}
+
+#rp-anti-slop .rp-button:hover:enabled { border-color: currentColor; }
+#rp-anti-slop .rp-button:disabled { cursor: default; opacity: .45; }
+#rp-anti-slop :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+#rp-anti-slop .rp-muted { color: var(--rp-muted); font-size: .9em; }
+#rp-anti-slop .rp-feedback { margin-block: .55rem .15rem; overflow-wrap: anywhere; }
+#rp-anti-slop .rp-dynamic-fields .rp-grid { margin-top: .65rem; }
+#rp-anti-slop .rp-subsection { border-top: 1px solid var(--rp-line); padding-block: .4rem; }
+#rp-anti-slop .rp-stat-list { list-style: none; margin: .35rem 0 0; padding: 0; }
+#rp-anti-slop .rp-stat-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; padding: .2rem 0; }
+#rp-anti-slop .rp-stat-term { font-weight: 650; overflow-wrap: anywhere; }
+#rp-anti-slop .rp-preview h4 { margin: .3rem 0 .2rem; }
+#rp-anti-slop .rp-preview pre {
+    margin: 0 0 .65rem;
+    max-height: 18rem;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    padding: .6rem;
+    border: 1px solid var(--rp-line);
+    border-radius: 6px;
+    background: var(--rp-wash);
+    font: inherit;
+    font-size: .94em;
+    line-height: 1.55;
+}
+
+@media (pointer: coarse) {
+    #rp-anti-slop .rp-button { min-height: 2.25rem; min-width: 2.25rem; }
+}

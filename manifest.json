@@ -1,0 +1,13 @@
+{
+  "display_name": "Roleplay Anti-Slop Manager",
+  "loading_order": 70,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "version": "1.0.0",
+  "minimum_client_version": "1.19.1",
+  "hooks": { "disable": "onDisable" },
+  "author": "ABnerccc",
+  "homePage": "https://github.com/ABnerccc/SillyTavern-Roleplay-AntiSlop-Manager"
+}
